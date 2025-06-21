@@ -1,0 +1,40 @@
+{% extends "admin/change_list.html" %}
+
+{% block content_title %}
+    <h1>产品库存概览</h1>
+{% endblock %}
+
+{% block result_list %}
+    <!-- 自定义数据看板 -->
+    <div style="margin: 20px 0; padding: 15px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9;">
+        <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
+            <div style="text-align: center; padding: 10px; background-color: #e3f2fd; border-radius: 5px;">
+                <h3>库存总量</h3>
+                <p style="font-size: 24px; font-weight: bold;">{{ total_stock }}</p>
+            </div>
+            <div style="text-align: center; padding: 10px; background-color: #ffecb3; border-radius: 5px;">
+                <h3>预警产品数</h3>
+                <p style="font-size: 24px; font-weight: bold; color: {{ alert_count|yesno:"#ff5722,#4caf50" }};">
+                    {{ alert_count }}
+                </p>
+            </div>
+        </div>
+
+        <div style="background-color: white; padding: 15px; border-radius: 5px; border: 1px solid #ddd;">
+            <h3>近期交易记录</h3>
+            <ul style="list-style-type: none; padding-left: 0;">
+                {% for t in recent_transactions %}
+                <li style="padding: 5px; border-bottom: 1px solid #eee;">
+                    <span style="color: #666;">{{ t.created_at|date:"Y-m-d H:i" }}</span> -
+                    <strong>{{ t.get_transaction_type_display }}</strong>
+                    {{ t.product.name }} ({{ t.quantity|stringformat:"+d" }})
+                </li>
+                {% empty %}
+                <li>暂无交易记录</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {{ block.super }}
+{% endblock %}

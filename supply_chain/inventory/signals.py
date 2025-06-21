@@ -1,39 +1,94 @@
-from django.db.models.signals import post_save
+# E:\pycharm_pro_project\supply_chain\inventory\signals.py
+
+from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from .models import Purchase, SalesOrder, InventoryLog, Product
 
 
-@receiver(post_save, sender=Purchase)
-def handle_purchase(sender, instance, created, **kwargs):
-    if created:
-        # 更新产品库存
-        product = instance.product
-        product.current_stock += instance.quantity
-        product.save()
+@receiver(pre_save, sender=Purchase)
+def update_product_on_purchase(sender, instance, **kwargs):
+    """处理采购订单状态变化"""
+    if instance.pk:  # 确保是更新操作，而不是创建
+        try:
+            original = Purchase.objects.get(pk=instance.pk)
+        except Purchase.DoesNotExist:
+            return  # 如果找不到原始记录，直接返回
 
-        # 创建库存日志
-        InventoryLog.objects.create(
-            product=product,
-            transaction_type='IN',
-            quantity=instance.quantity,
-            reference=instance.order_number,
-            operator=instance.operator
-        )
+        # 从未批准到批准状态
+        if original.status != 'approved' and instance.status == 'approved':
+            # 更新库存
+            instance.product.current_stock += instance.quantity
+            instance.product.save()
+
+            # 创建库存日志
+            InventoryLog.objects.create(
+                product=instance.product,
+                transaction_type='IN',
+                quantity=instance.quantity,
+                reference=instance.order_number,
+                operator=instance.operator
+            )
+
+        # 从批准到取消状态
+        elif original.status == 'approved' and instance.status == 'canceled':
+            # 恢复库存
+            instance.product.current_stock -= instance.quantity
+            instance.product.save()
+
+            # 创建库存日志（负向调整）
+            InventoryLog.objects.create(
+                product=instance.product,
+                transaction_type='ADJ',
+                quantity=-instance.quantity,
+                reference=instance.order_number,
+                operator=instance.operator,
+                notes=f"采购取消：{instance.rejection_reason}"
+            )
 
 
-@receiver(post_save, sender=SalesOrder)
-def handle_sales(sender, instance, created, **kwargs):
-    if created:
-        # 更新产品库存
-        product = instance.product
-        product.current_stock -= instance.quantity
-        product.save()
+@receiver(pre_save, sender=SalesOrder)
+def update_product_on_sales(sender, instance, **kwargs):
+    """处理销售订单状态变化"""
+    if instance.pk:  # 确保是更新操作
+        try:
+            original = SalesOrder.objects.get(pk=instance.pk)
+        except SalesOrder.DoesNotExist:
+            return  # 如果找不到原始记录，直接返回
 
-        # 创建库存日志
-        InventoryLog.objects.create(
-            product=product,
-            transaction_type='OUT',
-            quantity=-instance.quantity,
-            reference=instance.order_number,
-            operator=instance.operator
-        )
+        # 从未批准到批准状态
+        if original.status != 'approved' and instance.status == 'approved':
+            # 减少库存
+            instance.product.current_stock -= instance.quantity
+            instance.product.save()
+
+            # 创建库存日志
+            InventoryLog.objects.create(
+                product=instance.product,
+                transaction_type='OUT',
+                quantity=-instance.quantity,
+                reference=instance.order_number,
+                operator=instance.operator
+            )
+
+        # 从批准到取消状态
+        elif original.status == 'approved' and instance.status == 'canceled':
+            # 恢复库存
+            instance.product.current_stock += instance.quantity
+            instance.product.save()
+
+            # 创建库存日志（正向调整）
+            InventoryLog.objects.create(
+                product=instance.product,
+                transaction_type='ADJ',
+                quantity=instance.quantity,
+                reference=instance.order_number,
+                operator=instance.operator,
+                notes=f"销售取消：{instance.rejection_reason}"
+            )
+
+
+@receiver(pre_save, sender=InventoryLog)
+def prevent_manual_log_edit(sender, instance, **kwargs):
+    """防止手动修改库存日志"""
+    if instance.pk:
+        raise PermissionError("库存日志不可修改")

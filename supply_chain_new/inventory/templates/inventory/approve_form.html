@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_title %}审批采购订单 - {{ object.order_number }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'inventory:purchase_approval' %}" class="btn btn-primary">
+    <i class="fas fa-arrow-left me-1"></i> 返回审批列表
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">采购订单详情</h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <h6>订单编号</h6>
+                <p>{{ object.order_number }}</p>
+            </div>
+            <div class="col-md-4">
+                <h6>产品</h6>
+                <p>{{ object.product.name }} ({{ object.product.code }})</p>
+            </div>
+            <div class="col-md-4">
+                <h6>供应商</h6>
+                <p>{{ object.supplier.name }}</p>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <h6>采购数量</h6>
+                <p>{{ object.quantity }}</p>
+            </div>
+            <div class="col-md-4">
+                <h6>单价</h6>
+                <p>¥{{ object.unit_price|floatformat:2 }}</p>
+            </div>
+            <div class="col-md-4">
+                <h6>总金额</h6>
+                <p>¥{{ object.total_amount|floatformat:2 }}</p>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <h6>描述</h6>
+            <p>{{ object.description|default:"无" }}</p>
+        </div>
+
+        <div class="mb-4">
+            <h6>提交信息</h6>
+            <div class="d-flex justify-content-between">
+                <div>
+                    <span>提交人: {{ object.created_by.get_full_name|default:object.created_by.username }}</span>
+                </div>
+                <div>
+                    <span>时间: {{ object.created_at|date:"Y-m-d H:i" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">审批操作</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择操作</label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="action" id="approve" value="approve" checked>
+                                <label class="form-check-label text-success" for="approve">
+                                    <i class="fas fa-check-circle"></i> 批准
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="action" id="reject" value="reject">
+                                <label class="form-check-label text-danger" for="reject">
+                                    <i class="fas fa-times-circle"></i> 拒绝
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_reason" class="form-label">审批意见</label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="请输入审批意见（拒绝时必须填写）"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-paper-plane me-1"></i> 提交审批结果
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block page_title %}产品管理{% endblock %}
+
+{% block header_actions %}
+<div>
+    <a href="{% url 'admin:inventory_product_add' %}" class="btn btn-success me-1">
+        <i class="fas fa-plus me-1"></i>添加产品
+    </a>
+    <a href="{% url 'inventory:pdf_report' 'stock' %}" class="btn btn-primary">
+        <i class="fas fa-file-pdf me-1"></i>导出PDF
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">产品列表</h5>
+            <div>
+                <form method="get" class="d-inline">
+                    <div class="input-group">
+                        <select class="form-select" name="category" onchange="this.form.submit()">
+                            <option value="">所有分类</option>
+                            {% for value, name in categories %}
+                            <option value="{{ value }}" {% if value == selected_category %}selected{% endif %}>
+                                {{ name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <input type="hidden" name="low_stock" value="{{ low_stock|yesno:'true,false' }}">
+                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if low_stock %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-1"></i>仅显示库存预警产品
+            <a href="?category={{ selected_category }}&low_stock=false" class="float-end">
+                显示全部产品 <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>产品编号</th>
+                        <th>产品名称</th>
+                        <th>分类</th>
+                        <th>当前库存</th>
+                        <th>预警阈值</th>
+                        <th>状态</th>
+                        <th>库位</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in object_list %}
+                    <tr class="{{ product.stock_status_class }}">
+                        <td>{{ product.code }}</td>
+                        <td>
+                            <a href="{% url 'inventory:product_detail' pk=product.id %}"
+                               class="fw-bold">
+                                {{ product.name }}
+                            </a>
+                        </td>
+                        <td>{{ product.get_category_display }}</td>
+                        <td>{{ product.current_stock }}</td>
+                        <td>{{ product.alert_threshold }}</td>
+                        <td>
+                            <span class="badge
+                                {% if product.stock_status_display == '缺货' %}bg-danger
+                                {% elif product.stock_status_display == '预警' %}bg-warning
+                                {% else %}bg-success{% endif %}">
+                                {{ product.stock_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ product.location|default:"-" }}</td>
+                        <td>
+                            <a href="{% url 'admin:inventory_product_change' product.id %}"
+                               class="btn btn-sm btn-outline-secondary me-1"
+                               title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'inventory:product_detail' pk=product.id %}"
+                               class="btn btn-sm btn-outline-primary"
+                               title="详情">
+                                <i class="fas fa-info-circle"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <i class="fas fa-box-open fa-2x text-muted mb-3"></i>
+                            <p>没有找到产品</p>
+                            <a href="{% url 'admin:inventory_product_add' %}" class="btn btn-success">
+                                <i class="fas fa-plus me-1"></i>添加产品
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页导航 -->
+        {% if is_paginated %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if selected_category %}&category={{ selected_category }}{% endif %}{% if low_stock %}&low_stock=true{% endif %}">
+                        &laquo; 第一页
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if low_stock %}&low_stock=true{% endif %}">
+                        上一页
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <a class="page-link" href="#">{{ num }}</a>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if low_stock %}&low_stock=true{% endif %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if low_stock %}&low_stock=true{% endif %}">
+                        下一页
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if low_stock %}&low_stock=true{% endif %}">
+                        最后页 &raquo;
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

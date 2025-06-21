@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% load static %} <!-- 添加加载静态文件标签库 -->
+
+{% block page_title %}供应商管理{% endblock %}
+
+{% block header_actions %}
+<div>
+    <a href="{% url 'admin:inventory_supplier_add' %}" class="btn btn-success me-1">
+        <i class="fas fa-plus me-1"></i>添加供应商
+    </a>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importModal">
+        <i class="fas fa-file-import me-1"></i>批量导入
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">供应商列表</h5>
+            <div>
+                <form method="get" class="d-inline">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="q" placeholder="搜索供应商..." value="{{ request.GET.q }}">
+                        <button class="btn btn-outline-primary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body">
+        {% if object_list %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>供应商名称</th>
+                        <th>联系人</th>
+                        <th>电话</th>
+                        <th>邮箱</th>
+                        <th>地址</th>
+                        <th>评级</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in object_list %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'inventory:supplier_detail' pk=supplier.id %}" class="fw-bold">
+                                {{ supplier.name }}
+                            </a>
+                        </td>
+                        <td>{{ supplier.contact_person }}</td>
+                        <td>{{ supplier.phone }}</td>
+                        <td>{{ supplier.email }}</td>
+                        <td>{{ supplier.address|truncatechars:20 }}</td>
+                        <td>
+                            <span class="badge
+                                {% if supplier.rating >= 4 %}bg-success
+                                {% elif supplier.rating >= 3 %}bg-primary
+                                {% elif supplier.rating >= 2 %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                {{ supplier.rating }}星
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'admin:inventory_supplier_change' supplier.id %}"
+                               class="btn btn-sm btn-outline-secondary me-1" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'inventory:supplier_detail' pk=supplier.id %}"
+                               class="btn btn-sm btn-outline-primary" title="详情">
+                                <i class="fas fa-info-circle"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页导航 -->
+        {% if is_paginated %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1&q={{ request.GET.q }}">
+                        &laquo; 第一页
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q }}">
+                        上一页
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <a class="page-link" href="#">{{ num }}</a>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}&q={{ request.GET.q }}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q }}">
+                        下一页
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&q={{ request.GET.q }}">
+                        最后页 &raquo;
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-4">
+            <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+            <p class="lead">没有找到供应商</p>
+            <p class="text-muted mb-4">开始添加您的第一个供应商</p>
+            <a href="{% url 'admin:inventory_supplier_add' %}" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i>添加供应商
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 批量导入模态框 -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">批量导入供应商</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="importFile" class="form-label">选择Excel文件</label>
+                    <input class="form-control" type="file" id="importFile" accept=".xlsx,.xls">
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-1"></i> 请使用标准格式的Excel模板
+                    <a href="{% static 'templates/supplier_import_template.xlsx' %}" class="d-block mt-2">
+                        <i class="fas fa-download me-1"></i> 下载导入模板
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="startImport">
+                    <i class="fas fa-file-import me-1"></i> 开始导入
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('startImport').addEventListener('click', function() {
+    const fileInput = document.getElementById('importFile');
+    if (!fileInput.files || !fileInput.files[0]) {
+        alert('请选择要导入的Excel文件');
+        return;
+    }
+
+    // 显示加载指示器
+    showLoading();
+
+    // TODO: 添加实际的导入逻辑
+    setTimeout(function() {
+        hideLoading();
+        alert('供应商导入成功！');
+        location.reload();
+    }, 2000);
+});
+</script>
+{% endblock %}
